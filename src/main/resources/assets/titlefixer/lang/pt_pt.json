@@ -1,0 +1,11 @@
+{
+  "text.autoconfig.titlefixer.title": "Opções do corretor de título",
+  "text.autoconfig.titlefixer.option.titleAlwaysFitsScreen": "Título sempre dentro do ecrã",
+  "text.autoconfig.titlefixer.option.scoreboardMode": "Modo do placar",
+  "text.autoconfig.titlefixer.option.scoreboardFadeSpeed": "Velocidade de desvanecimento do placar",
+  "text.autoconfig.titlefixer.option.scoreboardHideMinAlpha": "Opacidade mínima do placar",
+  "text.autoconfig.titlefixer.option.titleMarginLeft": "Margem esquerda do título",
+  "text.autoconfig.titlefixer.option.titleMarginRight": "Margem direita do título",
+  "text.autoconfig.titlefixer.option.preferredTitleScale": "Escala preferida do título",
+  "text.autoconfig.titlefixer.option.preferredSubtitleScale": "Escala preferida do subtítulo"
+}

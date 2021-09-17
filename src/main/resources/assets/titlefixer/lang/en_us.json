@@ -1,0 +1,11 @@
+{
+  "text.autoconfig.titlefixer.title": "Title Fixer Settings",
+  "text.autoconfig.titlefixer.option.titleAlwaysFitsScreen": "Title Always Fits Screen",
+  "text.autoconfig.titlefixer.option.scoreboardMode": "Scoreboard Mode",
+  "text.autoconfig.titlefixer.option.scoreboardFadeSpeed": "Scoreboard Fade Speed",
+  "text.autoconfig.titlefixer.option.scoreboardHideMinAlpha": "Scoreboard Minimum Opacity",
+  "text.autoconfig.titlefixer.option.titleMarginLeft": "Title Margin Left",
+  "text.autoconfig.titlefixer.option.titleMarginRight": "Title Margin Right",
+  "text.autoconfig.titlefixer.option.preferredTitleScale": "Preferred Title Scale",
+  "text.autoconfig.titlefixer.option.preferredSubtitleScale": "Preferred Subtitle Scale"
+}

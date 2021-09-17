@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "titlefixer",
+  "version": "${version}",
+  "name": "Title Fixer",
+  "description": "Makes the Minecraft title fit the screen at all times.",
+  "authors": [
+    "TheGameratorT"
+  ],
+  "contact": {},
+  "license": "GPL-3.0",
+  "icon": "assets/titlefixer/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.thegameratort.titlefixer.TitleFixer"
+    ],
+    "modmenu": [
+      "com.thegameratort.titlefixer.config.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "titlefixer.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.11.6",
+    "fabric": "*",
+    "minecraft": "1.16.5"
+  }
+}
