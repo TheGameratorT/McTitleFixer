@@ -31,7 +31,7 @@ public abstract class InGameHudMixin {
     @Shadow private int scaledWidth;
     @Shadow private int scaledHeight;
 
-    @Shadow public abstract TextRenderer getFontRenderer();
+    @Shadow public abstract TextRenderer getTextRenderer();
     @Shadow protected abstract void drawTextBackground(MatrixStack matrices, TextRenderer textRenderer, int yOffset, int width, int color);
 
     private Text titlec;
@@ -66,7 +66,7 @@ public abstract class InGameHudMixin {
         renderTitle = titlec != null && titleTotalTicks > 0;
         if (renderTitle) {
             TitleFixerConfig config = TitleFixer.getConfig();
-            TextRenderer textRenderer = getFontRenderer();
+            TextRenderer textRenderer = getTextRenderer();
 
             int titleWidth = textRenderer.getWidth(titlec);
             collectTitleRenderInfo(titleRI, config.preferredTitleScale, titleWidth, config);
@@ -128,7 +128,7 @@ public abstract class InGameHudMixin {
     private void executeRenderInfo(MatrixStack matrices, float tickDelta) {
         if (renderTitle) {
             Profiler profiler = client.getProfiler();
-            TextRenderer textRenderer = getFontRenderer();
+            TextRenderer textRenderer = getTextRenderer();
 
             profiler.push("titleAndSubtitle");
 
