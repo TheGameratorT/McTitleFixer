@@ -23,8 +23,8 @@
     "titlefixer.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.11.7",
-    "minecraft": ">=1.17.1",
+    "fabricloader": ">=0.12.8",
+    "minecraft": ">=1.18",
     "cloth-config2": ">=5.0.38"
   }
 }
