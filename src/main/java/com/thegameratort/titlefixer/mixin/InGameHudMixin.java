@@ -9,6 +9,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.profiler.Profiler;
@@ -22,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 @Mixin(InGameHud.class)
 public abstract class InGameHudMixin {
     @Final @Shadow private MinecraftClient client;
-    @Shadow private int titleTotalTicks;
+    @Shadow private int titleStayTicks;
     @Shadow private Text title;
     @Shadow private Text subtitle;
     @Shadow private int titleFadeInTicks;
@@ -63,7 +64,7 @@ public abstract class InGameHudMixin {
     }
 
     private void collectRenderInfo() {
-        renderTitle = titlec != null && titleTotalTicks > 0;
+        renderTitle = titlec != null && titleStayTicks > 0;
         if (renderTitle) {
             TitleFixerConfig config = TitleFixer.getConfig();
             TextRenderer textRenderer = getTextRenderer();
@@ -132,14 +133,14 @@ public abstract class InGameHudMixin {
 
             profiler.push("titleAndSubtitle");
 
-            float ticksLeft = (float)titleTotalTicks - tickDelta;
+            float ticksLeft = (float)titleStayTicks - tickDelta;
             int alpha = 255;
-            if (titleTotalTicks > titleFadeOutTicks + titleRemainTicks) {
+            if (titleStayTicks > titleFadeOutTicks + titleRemainTicks) {
                 float r = (float)(titleFadeInTicks + titleRemainTicks + titleFadeOutTicks) - ticksLeft;
                 alpha = (int)(r * 255.0F / titleFadeInTicks);
             }
 
-            if (titleTotalTicks <= titleFadeOutTicks) {
+            if (titleStayTicks <= titleFadeOutTicks) {
                 alpha = (int)(ticksLeft * 255.0F / titleFadeOutTicks);
             }
 
@@ -195,6 +196,13 @@ public abstract class InGameHudMixin {
         }
     }
 
+    @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"), cancellable = true)
+    private void renderScoreboardSidebar_hook0(MatrixStack matrices, ScoreboardObjective objective, CallbackInfo ci) {
+        if (getNewScoreboardColor(-1) >>> 24 <= 8) {
+            ci.cancel();
+        }
+    }
+
     @ModifyArgs(
         method = "renderScoreboardSidebar(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
@@ -208,40 +216,31 @@ public abstract class InGameHudMixin {
             int x2 = args.get(3);
             scoreboardWidth = x2 - x1;
         }
-        int color = args.get(5);
-        args.set(5, getNewScoreboardColor(color));
+        args.set(5, getNewScoreboardColor(args.get(5)));
     }
 
-    @Redirect(
+    @ModifyArg(
         method = "renderScoreboardSidebar(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/font/TextRenderer;draw(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/text/Text;FFI)I"
-        )
+        ),
+            index = 4
     )
-    private int renderScoreboardSidebar_hook2(TextRenderer textRenderer, MatrixStack matrices, Text text, float x, float y, int color) {
-        int newColor = getNewScoreboardColor(color);
-        int alpha = newColor >>> 24;
-        if (alpha <= 8) {
-            return 0;
-        }
-        return textRenderer.draw(matrices, text, x, y, newColor);
+    private int renderScoreboardSidebar_hook2(int color) {
+        return getNewScoreboardColor(color);
     }
 
-    @Redirect(
+    @ModifyArg(
         method = "renderScoreboardSidebar(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/font/TextRenderer;draw(Lnet/minecraft/client/util/math/MatrixStack;Ljava/lang/String;FFI)I"
-        )
+        ),
+            index = 4
     )
-    private int renderScoreboardSidebar_hook3(TextRenderer textRenderer, MatrixStack matrices, String text, float x, float y, int color) {
-        int newColor = getNewScoreboardColor(color);
-        int alpha = newColor >>> 24;
-        if (alpha <= 8) {
-            return 0;
-        }
-        return textRenderer.draw(matrices, text, x, y, newColor);
+    private int renderScoreboardSidebar_hook3(int color) {
+        return getNewScoreboardColor(color);
     }
 
     private int getNewScoreboardColor(int color) {
