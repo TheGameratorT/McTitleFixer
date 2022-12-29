@@ -7,7 +7,13 @@
   "authors": [
     "TheGameratorT"
   ],
-  "contact": {},
+  "contributors": [
+    "moehreag"
+  ],
+  "contact": {
+    "sources": "https://github.com/TheGameratorT/McTitleFixer",
+    "issues": "https://github.com/TheGameratorT/McTitleFixer/issues"
+  },
   "license": "GPL-3.0",
   "icon": "assets/titlefixer/icon.png",
   "environment": "client",
