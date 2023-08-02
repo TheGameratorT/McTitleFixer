@@ -7,6 +7,7 @@ import com.thegameratort.titlefixer.config.ScoreboardMode;
 import com.thegameratort.titlefixer.config.TitleFixerConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.scoreboard.ScoreboardObjective;
@@ -33,7 +34,7 @@ public abstract class InGameHudMixin {
     @Shadow private int scaledHeight;
 
     @Shadow public abstract TextRenderer getTextRenderer();
-    @Shadow protected abstract void drawTextBackground(MatrixStack matrices, TextRenderer textRenderer, int yOffset, int width, int color);
+    @Shadow protected abstract void drawTextBackground(DrawContext context, TextRenderer textRenderer, int yOffset, int width, int color);
 
     private Text titlec;
 
@@ -45,7 +46,7 @@ public abstract class InGameHudMixin {
     public final TitleRenderInfo titleRI = new TitleRenderInfo();
     public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
 
-    @Inject(method = "render(Lnet/minecraft/client/util/math/MatrixStack;F)V", at = @At("HEAD"))
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;F)V", at = @At("HEAD"))
     private void preRenderHud(CallbackInfo ci) {
         scoreboardWidth = -1; // reset variable
         hideScoreboard = false; // reset variable
@@ -53,12 +54,12 @@ public abstract class InGameHudMixin {
         title = null; // prevent operation of the original title code
     }
 
-    @Inject(method = "render(Lnet/minecraft/client/util/math/MatrixStack;F)V", at = @At("TAIL"))
-    private void postRenderHud(MatrixStack matrices, float tickDelta, CallbackInfo ci) {
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;F)V", at = @At("TAIL"))
+    private void postRenderHud(DrawContext context, float tickDelta, CallbackInfo ci) {
         /* Calculate title stuff */
         collectRenderInfo();
         /* Render the title */
-        executeRenderInfo(matrices, tickDelta);
+        executeRenderInfo(context, tickDelta);
 
         title = titlec; // restore the title
     }
@@ -126,7 +127,7 @@ public abstract class InGameHudMixin {
         ri.scale = renderScale;
     }
 
-    private void executeRenderInfo(MatrixStack matrices, float tickDelta) {
+    private void executeRenderInfo(DrawContext context, float tickDelta) {
         if (renderTitle) {
             Profiler profiler = client.getProfiler();
             TextRenderer textRenderer = getTextRenderer();
@@ -146,24 +147,24 @@ public abstract class InGameHudMixin {
 
             alpha = MathHelper.clamp(alpha, 0, 255);
             if (alpha > 8) {
+                MatrixStack matrices = context.getMatrices();
                 matrices.push();
                 matrices.translate(titleRI.posX, titleRI.posY, 0.0F);
                 RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
                 matrices.push();
                 matrices.scale(titleRI.scale, titleRI.scale, 1.0F);
                 int titleColor = alpha << 24 & -0x1000000;
                 int titleWidth = textRenderer.getWidth(titlec);
-                drawTextBackground(matrices, textRenderer, -10, titleWidth, 0xFFFFFF | titleColor);
-                textRenderer.drawWithShadow(matrices, titlec, (float)(-titleWidth / 2), -10.0F, 0xFFFFFF | titleColor);
+                drawTextBackground(context, textRenderer, -10, titleWidth, 0xFFFFFF | titleColor);
+                context.drawTextWithShadow(textRenderer, titlec, -titleWidth / 2, -10, 0xFFFFFF | titleColor);
                 matrices.pop();
 
                 if (subtitle != null) {
                     matrices.push();
                     matrices.scale(subtitleRI.scale, subtitleRI.scale, 1.0F);
                     int subtitleWidth = textRenderer.getWidth(subtitle);
-                    drawTextBackground(matrices, textRenderer, 5, subtitleWidth, 0xFFFFFF | titleColor);
-                    textRenderer.drawWithShadow(matrices, subtitle, (float)(-subtitleWidth / 2), 5.0F, 0xFFFFFF | titleColor);
+                    drawTextBackground(context, textRenderer, 5, subtitleWidth, 0xFFFFFF | titleColor);
+                    context.drawTextWithShadow(textRenderer, subtitle, -subtitleWidth / 2, 5, 0xFFFFFF | titleColor);
                     matrices.pop();
                 }
 
@@ -197,47 +198,45 @@ public abstract class InGameHudMixin {
     }
 
     @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"), cancellable = true)
-    private void renderScoreboardSidebar_hook0(MatrixStack matrices, ScoreboardObjective objective, CallbackInfo ci) {
+    private void renderScoreboardSidebar_hook0(DrawContext context, ScoreboardObjective objective, CallbackInfo ci) {
         if (getNewScoreboardColor(-1) >>> 24 <= 8) {
             ci.cancel();
         }
     }
 
     @ModifyArgs(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/hud/InGameHud;fill(Lnet/minecraft/client/util/math/MatrixStack;IIIII)V"
+            target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
         )
     )
     private void renderScoreboardSidebar_hook1(Args args) {
         if (scoreboardWidth == -1) {
-            int x1 = args.get(1);
-            int x2 = args.get(3);
+            int x1 = args.get(0);
+            int x2 = args.get(2);
             scoreboardWidth = x2 - x1;
         }
-        args.set(5, getNewScoreboardColor(args.get(5)));
+        args.set(4, getNewScoreboardColor(args.get(4)));
     }
 
     @ModifyArg(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/font/TextRenderer;draw(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/text/Text;FFI)I"
-        ),
-            index = 4
+            target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)I"
+        ), index = 4
     )
     private int renderScoreboardSidebar_hook2(int color) {
         return getNewScoreboardColor(color);
     }
 
     @ModifyArg(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/font/TextRenderer;draw(Lnet/minecraft/client/util/math/MatrixStack;Ljava/lang/String;FFI)I"
-        ),
-            index = 4
+            target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Ljava/lang/String;IIIZ)I"
+        ), index = 4
     )
     private int renderScoreboardSidebar_hook3(int color) {
         return getNewScoreboardColor(color);
