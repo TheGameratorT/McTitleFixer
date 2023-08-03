@@ -1,6 +1,8 @@
 # Minecraft Title Fixer
 Makes the Minecraft title fit the screen at all times.
 
+[Download on Modrinth](https://modrinth.com/mod/title-fixer)
+
 ## Features
  - Can be toggled on and off
  - Allows setting custom title margins
