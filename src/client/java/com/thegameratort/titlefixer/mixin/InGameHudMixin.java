@@ -17,6 +17,7 @@ import net.minecraft.util.profiler.Profiler;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
@@ -36,15 +37,15 @@ public abstract class InGameHudMixin {
     @Shadow public abstract TextRenderer getTextRenderer();
     @Shadow protected abstract void drawTextBackground(DrawContext context, TextRenderer textRenderer, int yOffset, int width, int color);
 
-    private Text titlec;
+    @Unique private Text titlec;
 
-    private int scoreboardWidth = -1;
-    private int scoreboardOpacityGain = 0;
+    @Unique private int scoreboardWidth = -1;
+    @Unique private int scoreboardOpacityGain = 0;
 
-    public boolean renderTitle = false;
-    public boolean hideScoreboard = false;
-    public final TitleRenderInfo titleRI = new TitleRenderInfo();
-    public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
+    @Unique public boolean renderTitle = false;
+    @Unique public boolean hideScoreboard = false;
+    @Unique public final TitleRenderInfo titleRI = new TitleRenderInfo();
+    @Unique public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
 
     @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;F)V", at = @At("HEAD"))
     private void preRenderHud(CallbackInfo ci) {
@@ -64,6 +65,7 @@ public abstract class InGameHudMixin {
         title = titlec; // restore the title
     }
 
+    @Unique
     private void collectRenderInfo() {
         renderTitle = titlec != null && titleStayTicks > 0;
         if (renderTitle) {
@@ -80,6 +82,7 @@ public abstract class InGameHudMixin {
         }
     }
 
+    @Unique
     private void collectTitleRenderInfo(TitleRenderInfo ri, float titleScale, int titleWidth, TitleFixerConfig config) {
         float renderScale = titleScale;
         int renderAreaWidth = scaledWidth - config.titleMarginLeft - config.titleMarginRight;
@@ -127,6 +130,7 @@ public abstract class InGameHudMixin {
         ri.scale = renderScale;
     }
 
+    @Unique
     private void executeRenderInfo(DrawContext context, float tickDelta) {
         if (renderTitle) {
             Profiler profiler = client.getProfiler();
@@ -205,7 +209,7 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArgs(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+        method = "method_55440", // context.draw lambda
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
@@ -221,7 +225,7 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArg(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+        method = "method_55440", // context.draw lambda
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)I"
@@ -231,17 +235,7 @@ public abstract class InGameHudMixin {
         return getNewScoreboardColor(color);
     }
 
-    @ModifyArg(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Ljava/lang/String;IIIZ)I"
-        ), index = 4
-    )
-    private int renderScoreboardSidebar_hook3(int color) {
-        return getNewScoreboardColor(color);
-    }
-
+    @Unique
     private int getNewScoreboardColor(int color) {
         TitleFixerConfig config = TitleFixer.getConfig();
         int alpha = color >>> 24;
