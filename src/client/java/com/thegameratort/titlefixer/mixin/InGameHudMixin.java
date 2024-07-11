@@ -31,8 +31,6 @@ public abstract class InGameHudMixin {
     @Shadow private int titleFadeInTicks;
     @Shadow private int titleRemainTicks;
     @Shadow private int titleFadeOutTicks;
-    @Shadow private int scaledWidth;
-    @Shadow private int scaledHeight;
 
     @Shadow public abstract TextRenderer getTextRenderer();
     @Shadow protected abstract void drawTextBackground(DrawContext context, TextRenderer textRenderer, int yOffset, int width, int color);
@@ -58,7 +56,7 @@ public abstract class InGameHudMixin {
     @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;F)V", at = @At("TAIL"))
     private void postRenderHud(DrawContext context, float tickDelta, CallbackInfo ci) {
         /* Calculate title stuff */
-        collectRenderInfo();
+        collectRenderInfo(context);
         /* Render the title */
         executeRenderInfo(context, tickDelta);
 
@@ -66,24 +64,27 @@ public abstract class InGameHudMixin {
     }
 
     @Unique
-    private void collectRenderInfo() {
+    private void collectRenderInfo(DrawContext context) {
         renderTitle = titlec != null && titleStayTicks > 0;
         if (renderTitle) {
             TitleFixerConfig config = TitleFixer.getConfig();
             TextRenderer textRenderer = getTextRenderer();
 
             int titleWidth = textRenderer.getWidth(titlec);
-            collectTitleRenderInfo(titleRI, config.preferredTitleScale, titleWidth, config);
+            collectTitleRenderInfo(context, titleRI, config.preferredTitleScale, titleWidth, config);
 
             if (subtitle != null) {
                 int subtitleWidth = textRenderer.getWidth(subtitle);
-                collectTitleRenderInfo(subtitleRI, config.preferredSubtitleScale, subtitleWidth, config);
+                collectTitleRenderInfo(context, subtitleRI, config.preferredSubtitleScale, subtitleWidth, config);
             }
         }
     }
 
     @Unique
-    private void collectTitleRenderInfo(TitleRenderInfo ri, float titleScale, int titleWidth, TitleFixerConfig config) {
+    private void collectTitleRenderInfo(DrawContext context, TitleRenderInfo ri, float titleScale, int titleWidth, TitleFixerConfig config) {
+        int scaledWidth = context.getScaledWindowWidth();
+        int scaledHeight = context.getScaledWindowHeight();
+
         float renderScale = titleScale;
         int renderAreaWidth = scaledWidth - config.titleMarginLeft - config.titleMarginRight;
         int renderAreaWidthSB = renderAreaWidth - scoreboardWidth;
@@ -201,7 +202,7 @@ public abstract class InGameHudMixin {
         }
     }
 
-    @Inject(method = "renderScoreboardSidebar", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V", at = @At("HEAD"), cancellable = true)
     private void renderScoreboardSidebar_hook0(DrawContext context, ScoreboardObjective objective, CallbackInfo ci) {
         if (getNewScoreboardColor(-1) >>> 24 <= 8) {
             ci.cancel();
