@@ -9,9 +9,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
+import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.text.Text;
+import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.profiler.Profiler;
 import org.spongepowered.asm.mixin.Final;
@@ -33,7 +35,6 @@ public abstract class InGameHudMixin {
     @Shadow private int titleFadeOutTicks;
 
     @Shadow public abstract TextRenderer getTextRenderer();
-    @Shadow protected abstract void drawTextBackground(DrawContext context, TextRenderer textRenderer, int yOffset, int width, int color);
 
     @Unique private Text titlec;
 
@@ -45,7 +46,7 @@ public abstract class InGameHudMixin {
     @Unique public final TitleRenderInfo titleRI = new TitleRenderInfo();
     @Unique public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;F)V", at = @At("HEAD"))
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
     private void preRenderHud(CallbackInfo ci) {
         scoreboardWidth = -1; // reset variable
         hideScoreboard = false; // reset variable
@@ -53,12 +54,12 @@ public abstract class InGameHudMixin {
         title = null; // prevent operation of the original title code
     }
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;F)V", at = @At("TAIL"))
-    private void postRenderHud(DrawContext context, float tickDelta, CallbackInfo ci) {
+    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("TAIL"))
+    private void postRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         /* Calculate title stuff */
         collectRenderInfo(context);
         /* Render the title */
-        executeRenderInfo(context, tickDelta);
+        executeRenderInfo(context, tickCounter.getTickDelta(false));
 
         title = titlec; // restore the title
     }
@@ -158,18 +159,16 @@ public abstract class InGameHudMixin {
                 RenderSystem.enableBlend();
                 matrices.push();
                 matrices.scale(titleRI.scale, titleRI.scale, 1.0F);
-                int titleColor = alpha << 24 & -0x1000000;
+                int titleColor = ColorHelper.Argb.withAlpha(alpha, -1);
                 int titleWidth = textRenderer.getWidth(titlec);
-                drawTextBackground(context, textRenderer, -10, titleWidth, 0xFFFFFF | titleColor);
-                context.drawTextWithShadow(textRenderer, titlec, -titleWidth / 2, -10, 0xFFFFFF | titleColor);
+                context.drawTextWithBackground(textRenderer, titlec, -titleWidth / 2, -10, titleWidth, titleColor);
                 matrices.pop();
 
                 if (subtitle != null) {
                     matrices.push();
                     matrices.scale(subtitleRI.scale, subtitleRI.scale, 1.0F);
                     int subtitleWidth = textRenderer.getWidth(subtitle);
-                    drawTextBackground(context, textRenderer, 5, subtitleWidth, 0xFFFFFF | titleColor);
-                    context.drawTextWithShadow(textRenderer, subtitle, -subtitleWidth / 2, 5, 0xFFFFFF | titleColor);
+                    context.drawTextWithBackground(textRenderer, subtitle, -subtitleWidth / 2, 5, subtitleWidth, titleColor);
                     matrices.pop();
                 }
 
