@@ -16,6 +16,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.profiler.Profiler;
+import net.minecraft.util.profiler.Profilers;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -135,7 +136,7 @@ public abstract class InGameHudMixin {
     @Unique
     private void executeRenderInfo(DrawContext context, float tickDelta) {
         if (renderTitle) {
-            Profiler profiler = client.getProfiler();
+            Profiler profiler = Profilers.get();
             TextRenderer textRenderer = getTextRenderer();
 
             profiler.push("titleAndSubtitle");
@@ -159,7 +160,7 @@ public abstract class InGameHudMixin {
                 RenderSystem.enableBlend();
                 matrices.push();
                 matrices.scale(titleRI.scale, titleRI.scale, 1.0F);
-                int titleColor = ColorHelper.Argb.withAlpha(alpha, -1);
+                int titleColor = ColorHelper.withAlpha(alpha, -1);
                 int titleWidth = textRenderer.getWidth(titlec);
                 context.drawTextWithBackground(textRenderer, titlec, -titleWidth / 2, -10, titleWidth, titleColor);
                 matrices.pop();
@@ -209,7 +210,7 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArgs(
-        method = "method_55440", // context.draw lambda
+        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
@@ -225,7 +226,7 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArg(
-        method = "method_55440", // context.draw lambda
+        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)I"
