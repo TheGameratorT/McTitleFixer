@@ -67,7 +67,7 @@ public abstract class InGameHudMixin {
 
     @Unique
     private void collectRenderInfo(DrawContext context) {
-        renderTitle = titlec != null && titleStayTicks > 0;
+        renderTitle = titlec != null && titleRemainTicks > 0;
         if (renderTitle) {
             TitleFixerConfig config = TitleFixer.getConfig();
             TextRenderer textRenderer = getTextRenderer();
@@ -141,14 +141,14 @@ public abstract class InGameHudMixin {
 
             profiler.push("titleAndSubtitle");
 
-            float ticksLeft = (float)titleStayTicks - tickDelta;
+            float ticksLeft = (float)titleRemainTicks - tickDelta;
             int alpha = 255;
-            if (titleStayTicks > titleFadeOutTicks + titleRemainTicks) {
-                float r = (float)(titleFadeInTicks + titleRemainTicks + titleFadeOutTicks) - ticksLeft;
+            if (titleRemainTicks > titleFadeOutTicks + titleStayTicks) {
+                float r = (float)(titleFadeInTicks + titleStayTicks + titleFadeOutTicks) - ticksLeft;
                 alpha = (int)(r * 255.0F / titleFadeInTicks);
             }
 
-            if (titleStayTicks <= titleFadeOutTicks) {
+            if (titleRemainTicks <= titleFadeOutTicks) {
                 alpha = (int)(ticksLeft * 255.0F / titleFadeOutTicks);
             }
 
