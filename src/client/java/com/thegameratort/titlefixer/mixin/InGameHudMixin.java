@@ -1,6 +1,5 @@
 package com.thegameratort.titlefixer.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.thegameratort.titlefixer.TitleFixer;
 import com.thegameratort.titlefixer.TitleRenderInfo;
 import com.thegameratort.titlefixer.config.ScoreboardMode;
@@ -48,20 +47,18 @@ public abstract class InGameHudMixin {
     @Unique public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
 
     @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
-    private void preRenderHud(CallbackInfo ci) {
+    private void preRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         scoreboardWidth = -1; // reset variable
         hideScoreboard = false; // reset variable
         titlec = title; // keep a reference for the title
         title = null; // prevent operation of the original title code
+
+        /* Calculate title stuff */
+        collectRenderInfo(context);
     }
 
     @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("TAIL"))
     private void postRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        /* Calculate title stuff */
-        collectRenderInfo(context);
-        /* Render the title */
-        executeRenderInfo(context, tickCounter.getTickDelta(false));
-
         title = titlec; // restore the title
     }
 
@@ -133,15 +130,15 @@ public abstract class InGameHudMixin {
         ri.scale = renderScale;
     }
 
-    @Unique
-    private void executeRenderInfo(DrawContext context, float tickDelta) {
+    @Inject(method = "renderTitleAndSubtitle(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
+    private void renderTitleAndSubtitle_hook(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         if (renderTitle) {
             Profiler profiler = Profilers.get();
             TextRenderer textRenderer = getTextRenderer();
 
             profiler.push("titleAndSubtitle");
 
-            float ticksLeft = (float)titleRemainTicks - tickDelta;
+            float ticksLeft = (float)titleRemainTicks - tickCounter.getTickDelta(false);
             int alpha = 255;
             if (titleRemainTicks > titleFadeOutTicks + titleStayTicks) {
                 float r = (float)(titleFadeInTicks + titleStayTicks + titleFadeOutTicks) - ticksLeft;
@@ -157,7 +154,6 @@ public abstract class InGameHudMixin {
                 MatrixStack matrices = context.getMatrices();
                 matrices.push();
                 matrices.translate(titleRI.posX, titleRI.posY, 0.0F);
-                RenderSystem.enableBlend();
                 matrices.push();
                 matrices.scale(titleRI.scale, titleRI.scale, 1.0F);
                 int titleColor = ColorHelper.withAlpha(alpha, -1);
@@ -173,7 +169,6 @@ public abstract class InGameHudMixin {
                     matrices.pop();
                 }
 
-                RenderSystem.disableBlend();
                 matrices.pop();
             }
 
@@ -210,11 +205,11 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArgs(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
-        )
+            method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
+            )
     )
     private void renderScoreboardSidebar_hook1(Args args) {
         if (scoreboardWidth == -1) {
@@ -226,11 +221,11 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArg(
-        method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)I"
-        ), index = 4
+            method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)I"
+            ), index = 4
     )
     private int renderScoreboardSidebar_hook2(int color) {
         return getNewScoreboardColor(color);
