@@ -1,6 +1,5 @@
 package com.thegameratort.titlefixer.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.thegameratort.titlefixer.TitleFixer;
 import com.thegameratort.titlefixer.TitleRenderInfo;
 import com.thegameratort.titlefixer.config.ScoreboardMode;
@@ -47,20 +46,18 @@ public abstract class InGameHudMixin {
     @Unique public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
 
     @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
-    private void preRenderHud(CallbackInfo ci) {
+    private void preRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         scoreboardWidth = -1; // reset variable
         hideScoreboard = false; // reset variable
         titlec = title; // keep a reference for the title
         title = null; // prevent operation of the original title code
+
+        /* Calculate title stuff */
+        collectRenderInfo(context);
     }
 
     @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("TAIL"))
     private void postRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        /* Calculate title stuff */
-        collectRenderInfo(context);
-        /* Render the title */
-        executeRenderInfo(context, tickCounter.getTickDelta(false));
-
         title = titlec; // restore the title
     }
 
@@ -132,8 +129,8 @@ public abstract class InGameHudMixin {
         ri.scale = renderScale;
     }
 
-    @Unique
-    private void executeRenderInfo(DrawContext context, float tickDelta) {
+    @Inject(method = "renderTitleAndSubtitle(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
+    private void renderTitleAndSubtitle_hook(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
         if (renderTitle) {
             Profiler profiler = client.getProfiler();
             TextRenderer textRenderer = getTextRenderer();
@@ -156,7 +153,6 @@ public abstract class InGameHudMixin {
                 MatrixStack matrices = context.getMatrices();
                 matrices.push();
                 matrices.translate(titleRI.posX, titleRI.posY, 0.0F);
-                RenderSystem.enableBlend();
                 matrices.push();
                 matrices.scale(titleRI.scale, titleRI.scale, 1.0F);
                 int titleColor = ColorHelper.Argb.withAlpha(alpha, -1);
@@ -172,7 +168,6 @@ public abstract class InGameHudMixin {
                     matrices.pop();
                 }
 
-                RenderSystem.disableBlend();
                 matrices.pop();
             }
 
