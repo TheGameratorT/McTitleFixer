@@ -6,7 +6,7 @@ import com.thegameratort.titlefixer.config.ScoreboardMode;
 import com.thegameratort.titlefixer.config.TitleFixerConfig;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.Hud;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.network.chat.Component;
@@ -23,8 +23,8 @@ import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(Gui.class)
-public abstract class GuiMixin {
+@Mixin(Hud.class)
+public abstract class HudMixin {
     @Shadow private int titleStayTime;
     @Shadow private Component title;
     @Shadow private Component subtitle;
