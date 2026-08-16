@@ -4,16 +4,17 @@ import com.thegameratort.titlefixer.TitleFixer;
 import com.thegameratort.titlefixer.TitleRenderInfo;
 import com.thegameratort.titlefixer.config.ScoreboardMode;
 import com.thegameratort.titlefixer.config.TitleFixerConfig;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.scoreboard.ScoreboardObjective;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.ColorHelper;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.profiler.Profiler;
-import net.minecraft.util.profiler.Profilers;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.ARGB;
+import net.minecraft.util.Mth;
+import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.util.profiling.Profiler;
+import org.jetbrains.annotations.UnknownNullability;
 import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,18 +23,18 @@ import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(InGameHud.class)
-public abstract class InGameHudMixin {
-    @Shadow private int titleStayTicks;
-    @Shadow private Text title;
-    @Shadow private Text subtitle;
-    @Shadow private int titleFadeInTicks;
-    @Shadow private int titleRemainTicks;
-    @Shadow private int titleFadeOutTicks;
+@Mixin(Gui.class)
+public abstract class GuiMixin {
+    @Shadow private int titleStayTime;
+    @Shadow private Component title;
+    @Shadow private Component subtitle;
+    @Shadow private int titleFadeInTime;
+    @Shadow private int titleTime;
+    @Shadow private int titleFadeOutTime;
 
-    @Shadow public abstract TextRenderer getTextRenderer();
+    @Shadow public abstract Font getFont();
 
-    @Unique private Text titlec;
+    @Unique private Component titlec;
 
     @Unique private int scoreboardWidth = -1;
     @Unique private int scoreboardOpacityGain = 0;
@@ -43,8 +44,8 @@ public abstract class InGameHudMixin {
     @Unique public final TitleRenderInfo titleRI = new TitleRenderInfo();
     @Unique public final TitleRenderInfo subtitleRI = new TitleRenderInfo();
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
-    private void preRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+    @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V", at = @At("HEAD"))
+    private void preRenderHud(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
         scoreboardWidth = -1; // reset variable
         hideScoreboard = false; // reset variable
         titlec = title; // keep a reference for the title
@@ -54,32 +55,32 @@ public abstract class InGameHudMixin {
         collectRenderInfo(context);
     }
 
-    @Inject(method = "render(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("TAIL"))
-    private void postRenderHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+    @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V", at = @At("TAIL"))
+    private void postRenderHud(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
         title = titlec; // restore the title
     }
 
     @Unique
-    private void collectRenderInfo(DrawContext context) {
-        renderTitle = titlec != null && titleRemainTicks > 0;
+    private void collectRenderInfo(GuiGraphicsExtractor context) {
+        renderTitle = titlec != null && titleTime > 0;
         if (renderTitle) {
             TitleFixerConfig config = TitleFixer.getConfig();
-            TextRenderer textRenderer = getTextRenderer();
+            Font textRenderer = getFont();
 
-            int titleWidth = textRenderer.getWidth(titlec);
+            int titleWidth = textRenderer.width(titlec);
             collectTitleRenderInfo(context, titleRI, config.preferredTitleScale, titleWidth, config);
 
             if (subtitle != null) {
-                int subtitleWidth = textRenderer.getWidth(subtitle);
+                int subtitleWidth = textRenderer.width(subtitle);
                 collectTitleRenderInfo(context, subtitleRI, config.preferredSubtitleScale, subtitleWidth, config);
             }
         }
     }
 
     @Unique
-    private void collectTitleRenderInfo(DrawContext context, TitleRenderInfo ri, float titleScale, int titleWidth, TitleFixerConfig config) {
-        int scaledWidth = context.getScaledWindowWidth();
-        int scaledHeight = context.getScaledWindowHeight();
+    private void collectTitleRenderInfo(@UnknownNullability GuiGraphicsExtractor context, TitleRenderInfo ri, float titleScale, int titleWidth, TitleFixerConfig config) {
+        int scaledWidth = context.guiWidth();
+        int scaledHeight = context.guiHeight();
 
         float renderScale = titleScale;
         int renderAreaWidth = scaledWidth - config.titleMarginLeft - config.titleMarginRight;
@@ -127,42 +128,42 @@ public abstract class InGameHudMixin {
         ri.scale = renderScale;
     }
 
-    @Inject(method = "renderTitleAndSubtitle(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/client/render/RenderTickCounter;)V", at = @At("HEAD"))
-    private void renderTitleAndSubtitle_hook(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
+    @Inject(method = "extractTitle(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V", at = @At("HEAD"))
+    private void renderTitleAndSubtitle_hook(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
         if (renderTitle) {
-            Profiler profiler = Profilers.get();
-            TextRenderer textRenderer = getTextRenderer();
+            ProfilerFiller profiler = Profiler.get();
+            Font textRenderer = getFont();
 
             profiler.push("titleAndSubtitle");
 
-            float ticksLeft = (float)titleRemainTicks - tickCounter.getTickProgress(false);
+            float ticksLeft = (float) titleTime - tickCounter.getGameTimeDeltaPartialTick(false);
             int alpha = 255;
-            if (titleRemainTicks > titleFadeOutTicks + titleStayTicks) {
-                float r = (float)(titleFadeInTicks + titleStayTicks + titleFadeOutTicks) - ticksLeft;
-                alpha = (int)(r * 255.0F / titleFadeInTicks);
+            if (titleTime > titleFadeOutTime + titleStayTime) {
+                float r = (float)(titleFadeInTime + titleStayTime + titleFadeOutTime) - ticksLeft;
+                alpha = (int)(r * 255.0F / titleFadeInTime);
             }
 
-            if (titleRemainTicks <= titleFadeOutTicks) {
-                alpha = (int)(ticksLeft * 255.0F / titleFadeOutTicks);
+            if (titleTime <= titleFadeOutTime) {
+                alpha = (int)(ticksLeft * 255.0F / titleFadeOutTime);
             }
 
-            alpha = MathHelper.clamp(alpha, 0, 255);
+            alpha = Mth.clamp(alpha, 0, 255);
             if (alpha > 8) {
-                Matrix3x2fStack matrices = context.getMatrices();
+                Matrix3x2fStack matrices = context.pose();
                 matrices.pushMatrix();
                 matrices.translate(titleRI.posX, titleRI.posY);
                 matrices.pushMatrix();
                 matrices.scale(titleRI.scale, titleRI.scale);
-                int titleColor = ColorHelper.withAlpha(alpha, -1);
-                int titleWidth = textRenderer.getWidth(titlec);
-                context.drawTextWithBackground(textRenderer, titlec, -titleWidth / 2, -10, titleWidth, titleColor);
+                int titleColor = ARGB.color(alpha, -1);
+                int titleWidth = textRenderer.width(titlec);
+                context.textWithBackdrop(textRenderer, titlec, -titleWidth / 2, -10, titleWidth, titleColor);
                 matrices.popMatrix();
 
                 if (subtitle != null) {
                     matrices.pushMatrix();
                     matrices.scale(subtitleRI.scale, subtitleRI.scale);
-                    int subtitleWidth = textRenderer.getWidth(subtitle);
-                    context.drawTextWithBackground(textRenderer, subtitle, -subtitleWidth / 2, 5, subtitleWidth, titleColor);
+                    int subtitleWidth = textRenderer.width(subtitle);
+                    context.textWithBackdrop(textRenderer, subtitle, -subtitleWidth / 2, 5, subtitleWidth, titleColor);
                     matrices.popMatrix();
                 }
 
@@ -194,18 +195,18 @@ public abstract class InGameHudMixin {
         }
     }
 
-    @Inject(method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V", at = @At("HEAD"), cancellable = true)
-    private void renderScoreboardSidebar_hook0(DrawContext context, ScoreboardObjective objective, CallbackInfo ci) {
+    @Inject(method = "displayScoreboardSidebar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/scores/Objective;)V", at = @At("HEAD"), cancellable = true)
+    private void renderScoreboardSidebar_hook0(GuiGraphicsExtractor context, Objective objective, CallbackInfo ci) {
         if (getNewScoreboardColor(-1) >>> 24 <= 8) {
             ci.cancel();
         }
     }
 
     @ModifyArgs(
-            method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+            method = "displayScoreboardSidebar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/scores/Objective;)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V"
             )
     )
     private void renderScoreboardSidebar_hook1(Args args) {
@@ -218,10 +219,10 @@ public abstract class InGameHudMixin {
     }
 
     @ModifyArg(
-            method = "renderScoreboardSidebar(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/scoreboard/ScoreboardObjective;)V",
+            method = "displayScoreboardSidebar(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/scores/Objective;)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/DrawContext;drawText(Lnet/minecraft/client/font/TextRenderer;Lnet/minecraft/text/Text;IIIZ)V"
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V"
             ), index = 4
     )
     private int renderScoreboardSidebar_hook2(int color) {

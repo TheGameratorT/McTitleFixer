@@ -2,11 +2,11 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.thegameratort.titlefixer.mixin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
   ],
   "client": [
-    "InGameHudMixin"
+    "GuiMixin"
   ],
   "injectors": {
     "defaultRequire": 1
